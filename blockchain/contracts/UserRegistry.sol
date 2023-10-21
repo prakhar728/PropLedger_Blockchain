@@ -10,7 +10,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
  * @dev Stores User Status and Property Metadata
  */
 contract UserRegistry is Ownable {
-    mapping(address => UserStruct) userBase;
+    mapping(address => UserStruct) public userBase;
 
     PropertyMetaDataStruct[] public properties;
 
@@ -51,27 +51,28 @@ contract UserRegistry is Ownable {
     /**
      * @dev Let user submit their information for KYC verification
      * @param URI URL of the KYC Information
+     * @param user address of the user applying for KYC
      */
-    function addUserDetails(string calldata URI) public {
+    function addUserDetails(string calldata URI,address user) public {
         require(
-            userBase[msg.sender].kycStatus != KYCSTATUS.PENDING,
+            userBase[user].kycStatus != KYCSTATUS.PENDING,
             "Already Applied"
         );
         require(
-            userBase[msg.sender].kycStatus != KYCSTATUS.COMPLETED,
+            userBase[user].kycStatus != KYCSTATUS.COMPLETED,
             "Already Verified"
         );
-        userBase[msg.sender].kycStatus = KYCSTATUS.PENDING;
-        userBase[msg.sender].kycUrl = URI;
+        userBase[user].kycStatus = KYCSTATUS.PENDING;
+        userBase[user].kycUrl = URI;
     }
 
     /**
      * @dev Verify Users KYC status
      * @param user address of the user to verify the KYC for
      */
-    function verifyUser(address user) public onlyOwner {
+    function verifyUser(address user) public  {
         require(
-            userBase[msg.sender].kycStatus == KYCSTATUS.PENDING,
+            userBase[user].kycStatus == KYCSTATUS.PENDING,
             "Can't verify. "
         );
         userBase[user].kycStatus = KYCSTATUS.COMPLETED;
@@ -90,7 +91,7 @@ contract UserRegistry is Ownable {
      */
     function getUserData(address user) public view returns (UserData memory) {
         // Ensure that the caller is the owner of the data
-        require(msg.sender == user, "Only the owner of the data can access it");
+        // require(msg.sender == user, "Only the owner of the data can access it");
         UserStruct storage userData = userBase[user];
         UserData memory userDataSubset;
         userDataSubset.kycStatus = userData.kycStatus;
@@ -100,12 +101,14 @@ contract UserRegistry is Ownable {
 
     /**
      * @dev Add Property Owned by user
+     * @param _owner Name of the owner of the property
      * @param name Name of the Property Token Intented
      * @param symbol Symbol of the token to be minted
      * @param initialSupply How many tokens does the owner of property want to own
      * @param limitedSupply How many tokens to be created that will be in circulation
      */
     function AddProperty(
+        address _owner,
         string calldata name,
         string calldata symbol,
         uint256 initialSupply,
@@ -121,8 +124,8 @@ contract UserRegistry is Ownable {
             initialSupply,
             limitedSupply
         );
-        newToken.transferOwnership(msg.sender); // Transfer ownership to the caller.
-        userBase[msg.sender].personalProperties.push(
+        newToken.transferOwnership(_owner); // Transfer ownership to the caller.
+        userBase[_owner].personalProperties.push(
             PropertyMetaDataStruct(address(newToken), false)
         );
         emit PropertyAdded(
@@ -137,8 +140,9 @@ contract UserRegistry is Ownable {
     /**
      * @dev Add Property Owned by user
      * @param id Id of the Property meant to be verified
+     * @param user address of the user whose property is meant to be verified
      */
-    function VerifyProperty(uint256 id) external onlyOwner {
-        userBase[msg.sender].personalProperties[id].verified = true;
+    function VerifyProperty(uint256 id,address user) external  {
+        userBase[user].personalProperties[id].verified = true;
     }
 }
